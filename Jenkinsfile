@@ -10,7 +10,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git branch: 'master',
+                git branch: 'main',
                     credentialsId: 'github-token',
                     url: 'https://github.com/JemAli211/mesut-ozil.git'
             }
