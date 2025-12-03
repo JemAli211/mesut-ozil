@@ -24,7 +24,7 @@ pipeline {
 stage('Build Docker Image') {
     steps {
         script {
-            sh 'docker build -t jemali/connect-sphere:latest .'
+            sh 'docker build -t alijemai/connect-sphere:latest .'
         }
     }
 }
@@ -37,7 +37,7 @@ stage('Push Docker Image') {
                                              passwordVariable: 'DOCKER_PASS')]) {
 
                 sh "echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin"
-                sh "docker push jemali/connect-sphere:latest"
+                sh "docker push alijemai/connect-sphere:latest"
             }
         }
     }
