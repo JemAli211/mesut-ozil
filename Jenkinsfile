@@ -3,56 +3,67 @@ pipeline {
 
     tools {
         maven 'M2_HOME'
-        jdk 'JAVA_HOME'
+        jdk   'JAVA_HOME'
+    }
+
+    environment {
+        IMAGE_NAME = "student-app"
+        IMAGE_TAG  = "1.0"
+        K8S_DIR    = "k8s"
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    credentialsId: 'github-token',
-                    url: 'https://github.com/JemAli211/mesut-ozil.git'
+                git 'https://github.com/JemAli211/student-management.git'
             }
         }
 
-        stage('Build') {
+        stage('Build Maven') {
             steps {
                 sh "mvn clean package -DskipTests"
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Docker build (Minikube)') {
             steps {
-                script {
-                    sh 'docker build -t alijemai/connect-sphere:latest .'
-                }
+                sh '''
+                    echo ">>> Activation du moteur Docker de Minikube"
+                    eval $(minikube docker-env)
+
+                    echo ">>> Build de l'image Docker Spring Boot"
+                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+
+                    echo ">>> Vérification de l'image"
+                    docker images | grep ${IMAGE_NAME}
+                '''
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Deployment Kubernetes') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
-                                                 usernameVariable: 'DOCKER_USER',
-                                                 passwordVariable: 'DOCKER_PASS')]) {
-                    script {
-                        sh """
-                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                            docker push alijemai/connect-sphere:latest
-                        """
-                    }
-                }
+                sh """
+                    echo '>>> Déploiement MySQL'
+                    kubectl apply -f ${K8S_DIR}/mysql-secret.yaml
+                    kubectl apply -f ${K8S_DIR}/mysql-pv-pvc.yaml
+                    kubectl apply -f ${K8S_DIR}/mysql-deployment.yaml
+                    kubectl apply -f ${K8S_DIR}/mysql-service.yaml
+
+                    echo '>>> Déploiement Spring Boot'
+                    kubectl apply -f ${K8S_DIR}/spring-deployment.yaml
+                    kubectl apply -f ${K8S_DIR}/spring-service.yaml
+
+                    echo '>>> Vérification des pods et services'
+                    kubectl get pods
+                    kubectl get svc
+                """
             }
         }
-
     }
 
     post {
-        success {
-            echo "Build réussi 🎉"
-        }
-        failure {
-            echo "Build échoué ❌"
-        }
+        success { echo "Pipeline exécuté avec succès 🎉" }
+        failure { echo "❌ Erreur dans le pipeline" }
     }
 }
