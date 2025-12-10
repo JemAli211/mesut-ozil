@@ -30,51 +30,51 @@ pipeline {
             }
         }
 
-        // 2) Build Maven (pom.xml à la racine du repo)
+        // 2) Build Maven
         stage('Build Maven') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
-        // 3) Build de l'image Docker avec le Dockerfile à la racine
+        // 3) Build de l'image Docker
         stage('Docker build') {
             steps {
-                sh """
-                    echo '>>> Build de l'image Docker'
-                    docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                sh '''
+                    echo ">>> Build Docker image"
+                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
 
-                    echo '>>> Images Docker filtrées sur ${IMAGE_NAME}'
-                    docker images | grep ${IMAGE_NAME} || true
-                """
+                    echo ">>> Images Docker filtrées sur $IMAGE_NAME"
+                    docker images | grep $IMAGE_NAME || true
+                '''
             }
         }
 
-        // 4) Déploiement sur Kubernetes avec kubectl
+        // 4) Déploiement Kubernetes
         stage('Deployment Kubernetes') {
             steps {
-                sh """
-                    echo '>>> Déploiement Kubernetes avec les manifests dans ${K8S_DIR}'
+                sh '''
+                    echo ">>> Déploiement Kubernetes avec les manifests dans $K8S_DIR"
 
                     # MySQL
-                    kubectl apply -f ${K8S_DIR}/mysql-secret.yaml --validate=false
-                    kubectl apply -f ${K8S_DIR}/mysql-pv-pvc.yaml --validate=false
-                    kubectl apply -f ${K8S_DIR}/mysql-deployment.yaml --validate=false
-                    kubectl apply -f ${K8S_DIR}/mysql-service.yaml --validate=false
+                    kubectl apply -f $K8S_DIR/mysql-secret.yaml --validate=false
+                    kubectl apply -f $K8S_DIR/mysql-pv-pvc.yaml --validate=false
+                    kubectl apply -f $K8S_DIR/mysql-deployment.yaml --validate=false
+                    kubectl apply -f $K8S_DIR/mysql-service.yaml --validate=false
 
                     # Spring Boot
-                    kubectl apply -f ${K8S_DIR}/spring-deployment.yaml --validate=false
-                    kubectl apply -f ${K8S_DIR}/spring-service.yaml --validate=false
+                    kubectl apply -f $K8S_DIR/spring-deployment.yaml --validate=false
+                    kubectl apply -f $K8S_DIR/spring-service.yaml --validate=false
 
-                    echo '>>> Etat des pods :'
+                    echo ">>> Etat des pods :"
                     kubectl get pods
 
-                    echo '>>> Etat des services :'
+                    echo ">>> Etat des services :"
                     kubectl get svc
 
-                    echo '>>> Secrets :'
+                    echo ">>> Secrets :"
                     kubectl get secrets
-                """
+                '''
             }
         }
     }
