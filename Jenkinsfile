@@ -15,15 +15,17 @@ pipeline {
         IMAGE_NAME = 'student-app'
         IMAGE_TAG  = '1.0'
 
-        // Dossier Kubernetes
+        // Dossier des manifests Kubernetes (dossier k8s à la racine du repo)
         K8S_DIR    = 'k8s'
 
-        // 🔥 kubeconfig de ton utilisateur WSL
+        // 🔥 kubeconfig à utiliser pour kubectl
+        // (on a vérifié : /home/ali/.kube/config existe bien)
         KUBECONFIG = '/home/ali/.kube/config'
     }
 
     stages {
 
+        // 1) Récupération du code source
         stage('Checkout') {
             steps {
                 git branch: "${BRANCH}",
@@ -32,48 +34,52 @@ pipeline {
             }
         }
 
+        // 2) Build Maven (pom.xml à la racine du repo)
         stage('Build Maven') {
             steps {
                 sh 'mvn clean package -DskipTests'
             }
         }
 
+        // 3) Build de l'image Docker avec le Dockerfile à la racine
         stage('Docker build') {
             steps {
-                sh '''
-                    echo ">>> Build Docker image"
-                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
-
-                    echo ">>> Images Docker filtrées sur $IMAGE_NAME"
-                    docker images | grep $IMAGE_NAME || true
-                '''
+                script {
+                    echo ">>> Build de l'image Docker"
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                    
+                    echo ">>> Images Docker filtrées sur ${IMAGE_NAME}"
+                    sh "docker images | grep ${IMAGE_NAME} || true"
+                }
             }
         }
 
+        // 4) Déploiement sur Kubernetes avec kubectl
         stage('Deployment Kubernetes') {
             steps {
-                sh '''
-                    echo ">>> Déploiement Kubernetes avec les manifests dans $K8S_DIR"
+                script {
+                    echo ">>> Déploiement Kubernetes avec les manifests dans ${K8S_DIR}"
+                    sh 'echo "KUBECONFIG utilisé : $KUBECONFIG"'
 
-                    # MySQL
-                    kubectl apply -f $K8S_DIR/mysql-secret.yaml --validate=false
-                    kubectl apply -f $K8S_DIR/mysql-pv-pvc.yaml --validate=false
-                    kubectl apply -f $K8S_DIR/mysql-deployment.yaml --validate=false
-                    kubectl apply -f $K8S_DIR/mysql-service.yaml --validate=false
+                    // MySQL
+                    sh "kubectl apply -f ${K8S_DIR}/mysql-secret.yaml --validate=false"
+                    sh "kubectl apply -f ${K8S_DIR}/mysql-pv-pvc.yaml --validate=false"
+                    sh "kubectl apply -f ${K8S_DIR}/mysql-deployment.yaml --validate=false"
+                    sh "kubectl apply -f ${K8S_DIR}/mysql-service.yaml --validate=false"
 
-                    # Spring Boot
-                    kubectl apply -f $K8S_DIR/spring-deployment.yaml --validate=false
-                    kubectl apply -f $K8S_DIR/spring-service.yaml --validate=false
+                    // Spring Boot
+                    sh "kubectl apply -f ${K8S_DIR}/spring-deployment.yaml --validate=false"
+                    sh "kubectl apply -f ${K8S_DIR}/spring-service.yaml --validate=false"
 
                     echo ">>> Etat des pods :"
-                    kubectl get pods
+                    sh "kubectl get pods"
 
                     echo ">>> Etat des services :"
-                    kubectl get svc
+                    sh 'kubectl get svc'
 
                     echo ">>> Secrets :"
-                    kubectl get secrets
-                '''
+                    sh "kubectl get secrets"
+                }
             }
         }
     }
