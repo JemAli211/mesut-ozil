@@ -9,11 +9,11 @@ pipeline {
     environment {
         IMAGE_NAME = "alijemai/student-app"
         IMAGE_TAG  = "1.0"
-        K8S_DIR    = "k8s"
+        // adapte ce chemin si ton dossier k8s n'est pas ici
+        K8S_DIR    = "student-management/k8s"
     }
 
-    stages {
-         stage('Checkout') {
+      stage('Checkout') {
             steps {
                 git branch: 'main',
                     credentialsId: 'github-token',
@@ -24,7 +24,10 @@ pipeline {
 
         stage('Build Maven') {
             steps {
-                sh "mvn clean package -DskipTests"
+                sh """
+                    echo '>>> Build Maven dans student-management'
+                    mvn -f student-management/pom.xml clean package -DskipTests
+                """
             }
         }
 
@@ -32,51 +35,41 @@ pipeline {
             steps {
                 sh """
                     echo '>>> Build image Docker'
+                    cd student-management
                     docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
+                    echo '>>> Images locales :'
                     docker images | grep ${IMAGE_NAME} || true
                 """
             }
         }
 
-        // Si tu veux push sur DockerHub (facultatif, mais bien pour le workshop)
-        /*
-        stage('Docker push') {
+        stage('Deployment Kubernetes') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
-                                                 usernameVariable: 'DOCKER_USER',
-                                                 passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                    '''
-                }
+                sh """
+                    echo '>>> kubectl apply sur les manifests'
+
+                    kubectl apply -f ${K8S_DIR}/mysql-secret.yaml --validate=false
+                    kubectl apply -f ${K8S_DIR}/mysql-pv-pvc.yaml --validate=false
+                    kubectl apply -f ${K8S_DIR}/mysql-deployment.yaml --validate=false
+                    kubectl apply -f ${K8S_DIR}/mysql-service.yaml --validate=false
+
+                    kubectl apply -f ${K8S_DIR}/spring-deployment.yaml --validate=false
+                    kubectl apply -f ${K8S_DIR}/spring-service.yaml --validate=false
+
+                    echo '>>> Vérification'
+                    kubectl get pods
+                    kubectl get svc
+                """
             }
         }
-        */
-
-stage('Deployment Kubernetes') {
-    steps {
-        sh """
-            echo '>>> kubectl apply sur les manifests'
-
-            kubectl apply -f k8s/mysql-secret.yaml --validate=false
-            kubectl apply -f k8s/mysql-pv-pvc.yaml --validate=false
-            kubectl apply -f k8s/mysql-deployment.yaml --validate=false
-            kubectl apply -f k8s/mysql-service.yaml --validate=false
-
-            kubectl apply -f k8s/spring-deployment.yaml --validate=false
-            kubectl apply -f k8s/spring-service.yaml --validate=false
-
-            echo '>>> Vérification'
-            kubectl get pods
-            kubectl get svc
-        """
     }
-}
-
 
     post {
-        success { echo "Pipeline exécuté avec succès 🎉" }
-        failure { echo "❌ Erreur dans le pipeline" }
+        success {
+            echo "Pipeline exécuté avec succès 🎉"
+        }
+        failure {
+            echo "❌ Erreur dans le pipeline"
+        }
     }
 }
