@@ -7,14 +7,13 @@ pipeline {
     }
 
     environment {
-        IMAGE_NAME = "student-app"
+        IMAGE_NAME = "alijemai/student-app"
         IMAGE_TAG  = "1.0"
         K8S_DIR    = "k8s"
     }
 
     stages {
-
-       stage('Checkout') {
+         stage('Checkout') {
             steps {
                 git branch: 'main',
                     credentialsId: 'github-token',
@@ -29,35 +28,45 @@ pipeline {
             }
         }
 
-        stage('Docker build (Minikube)') {
+        stage('Docker build') {
             steps {
-                sh '''
-                    echo ">>> Activation du moteur Docker de Minikube"
-                    eval $(minikube docker-env)
-
-                    echo ">>> Build de l'image Docker Spring Boot"
+                sh """
+                    echo '>>> Build image Docker'
                     docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .
-
-                    echo ">>> Vérification de l'image"
-                    docker images | grep ${IMAGE_NAME}
-                '''
+                    docker images | grep ${IMAGE_NAME} || true
+                """
             }
         }
+
+        // Si tu veux push sur DockerHub (facultatif, mais bien pour le workshop)
+        /*
+        stage('Docker push') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-creds',
+                                                 usernameVariable: 'DOCKER_USER',
+                                                 passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                    '''
+                }
+            }
+        }
+        */
 
         stage('Deployment Kubernetes') {
             steps {
                 sh """
-                    echo '>>> Déploiement MySQL'
+                    echo '>>> kubectl apply sur les manifests'
                     kubectl apply -f ${K8S_DIR}/mysql-secret.yaml
                     kubectl apply -f ${K8S_DIR}/mysql-pv-pvc.yaml
                     kubectl apply -f ${K8S_DIR}/mysql-deployment.yaml
                     kubectl apply -f ${K8S_DIR}/mysql-service.yaml
 
-                    echo '>>> Déploiement Spring Boot'
                     kubectl apply -f ${K8S_DIR}/spring-deployment.yaml
                     kubectl apply -f ${K8S_DIR}/spring-service.yaml
 
-                    echo '>>> Vérification des pods et services'
+                    echo '>>> Vérification'
                     kubectl get pods
                     kubectl get svc
                 """
