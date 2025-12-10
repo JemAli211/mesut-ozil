@@ -54,25 +54,26 @@ pipeline {
         }
         */
 
-        stage('Deployment Kubernetes') {
-            steps {
-                sh """
-                    echo '>>> kubectl apply sur les manifests'
-                    kubectl apply -f ${K8S_DIR}/mysql-secret.yaml
-                    kubectl apply -f ${K8S_DIR}/mysql-pv-pvc.yaml
-                    kubectl apply -f ${K8S_DIR}/mysql-deployment.yaml
-                    kubectl apply -f ${K8S_DIR}/mysql-service.yaml
+stage('Deployment Kubernetes') {
+    steps {
+        sh """
+            echo '>>> kubectl apply sur les manifests'
 
-                    kubectl apply -f ${K8S_DIR}/spring-deployment.yaml
-                    kubectl apply -f ${K8S_DIR}/spring-service.yaml
+            kubectl apply -f k8s/mysql-secret.yaml --validate=false
+            kubectl apply -f k8s/mysql-pv-pvc.yaml --validate=false
+            kubectl apply -f k8s/mysql-deployment.yaml --validate=false
+            kubectl apply -f k8s/mysql-service.yaml --validate=false
 
-                    echo '>>> Vérification'
-                    kubectl get pods
-                    kubectl get svc
-                """
-            }
-        }
+            kubectl apply -f k8s/spring-deployment.yaml --validate=false
+            kubectl apply -f k8s/spring-service.yaml --validate=false
+
+            echo '>>> Vérification'
+            kubectl get pods
+            kubectl get svc
+        """
     }
+}
+
 
     post {
         success { echo "Pipeline exécuté avec succès 🎉" }
