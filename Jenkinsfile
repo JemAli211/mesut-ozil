@@ -14,11 +14,14 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
+       stage('Checkout') {
             steps {
-                git 'https://github.com/JemAli211/student-management.git'
+                git branch: 'main',
+                    credentialsId: 'github-token',
+                    url: 'https://github.com/JemAli211/mesut-ozil.git'
             }
         }
+
 
         stage('Build Maven') {
             steps {
