@@ -1,27 +1,22 @@
 pipeline {
     agent any
-
     tools {
         maven 'M2_HOME'
         jdk   'JAVA_HOME'
     }
-
     environment {
         IMAGE_NAME = "alijemai/student-app"
         IMAGE_TAG  = "1.0"
-        // adapte ce chemin si ton dossier k8s n'est pas ici
         K8S_DIR    = "student-management/k8s"
     }
-
-      stage('Checkout') {
+    stages {
+        stage('Checkout') {
             steps {
                 git branch: 'main',
                     credentialsId: 'github-token',
                     url: 'https://github.com/JemAli211/mesut-ozil.git'
             }
         }
-
-
         stage('Build Maven') {
             steps {
                 sh """
@@ -30,7 +25,6 @@ pipeline {
                 """
             }
         }
-
         stage('Docker build') {
             steps {
                 sh """
@@ -42,20 +36,16 @@ pipeline {
                 """
             }
         }
-
         stage('Deployment Kubernetes') {
             steps {
                 sh """
                     echo '>>> kubectl apply sur les manifests'
-
                     kubectl apply -f ${K8S_DIR}/mysql-secret.yaml --validate=false
                     kubectl apply -f ${K8S_DIR}/mysql-pv-pvc.yaml --validate=false
                     kubectl apply -f ${K8S_DIR}/mysql-deployment.yaml --validate=false
                     kubectl apply -f ${K8S_DIR}/mysql-service.yaml --validate=false
-
                     kubectl apply -f ${K8S_DIR}/spring-deployment.yaml --validate=false
                     kubectl apply -f ${K8S_DIR}/spring-service.yaml --validate=false
-
                     echo '>>> Vérification'
                     kubectl get pods
                     kubectl get svc
@@ -63,7 +53,6 @@ pipeline {
             }
         }
     }
-
     post {
         success {
             echo "Pipeline exécuté avec succès 🎉"
