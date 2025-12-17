@@ -41,6 +41,18 @@ pipeline {
             }
         }
 
+        stage('MVN SONARQUBE') {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    sh """
+                      mvn -B -DskipTests sonar:sonar \
+                        -Dsonar.projectKey=student-management \
+                        -Dsonar.projectName=student-management
+                    """
+                }
+            }
+        }
+
         // 3) Build de l'image Docker avec le Dockerfile à la racine
         stage('Docker build') {
             steps {
@@ -58,7 +70,7 @@ pipeline {
         stage('Deployment Kubernetes') {
             steps {
                 script {
-                    echo ">>> Déploiement Kubernetes avec les manifests dans ${K8S_DIR}"
+                    echo ">>> Dépploiement Kubernetes avec les manifests dans ${K8S_DIR}"
                     sh 'echo "KUBECONFIG utilisé : $KUBECONFIG"'
 
                     // MySQL
