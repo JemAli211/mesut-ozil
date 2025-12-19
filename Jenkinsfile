@@ -41,17 +41,18 @@ pipeline {
             }
         }
 
-        stage('MVN SONARQUBE') {
-            steps {
-                withSonarQubeEnv('sonar') {
-                    sh """
-                      mvn -B -DskipTests sonar:sonar \
-                        -Dsonar.projectKey=student-management \
-                        -Dsonar.projectName=student-management
-                    """
-                }
-            }
+      stage('SonarQube Analysis') {
+    steps {
+        withSonarQubeEnv("${SONARQUBE_SERVER}") {
+            sh '''
+              mvn -B -DskipTests sonar:sonar \
+                -Dsonar.projectKey=student-management \
+                -Dsonar.projectName=student-management
+            '''
         }
+    }
+}
+
 
         // 3) Build de l'image Docker avec le Dockerfile à la racine
         stage('Docker build') {
