@@ -21,6 +21,7 @@ pipeline {
         // 🔥 kubeconfig à utiliser pour kubectl
         // (on a vérifié : /home/ali/.kube/config existe bien)
         KUBECONFIG = '/home/ali/.kube/config'
+        SONARQUBE_SERVER = "SonarQube"
     }
 
     stages {
